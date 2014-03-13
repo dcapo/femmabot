@@ -1,4 +1,6 @@
 import sys
+import os
+import subprocess
 import re
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
@@ -16,7 +18,7 @@ class BlogPostException(Exception):
         
 class WordPressDriver:
     IMAGE_MACRO = "MUSTAFA"
-    IMAGE_DIR = '/Users/Daniel/Desktop'
+    IMAGE_DIR = os.path.dirname(os.path.realpath(__file__)) + '/media/images'
     
     def __init__(self, driver, blog_post):
         self.driver = driver
@@ -98,8 +100,9 @@ class WordPressDriver:
         h1 = "<h1>%s</h1>" % self.bp['h1']
         h3 = "<h3>%s \n %s</h3>" % (self.bp['h3'], self.bp['address'])
         post = "%s\n%s\n%s" % (h1, self.bp['body'], h3)
-        keywords = self.bp['link_keywords'].replace(' ', '').split(',')
+        keywords = self.bp['link_keywords'].split(',')
         for keyword in keywords:
+            keyword = keyword.strip()
             post = post.replace(keyword, "<a href='%s' title='%s'>%s</a>" % (self.bp['home_page'], keyword, keyword))
         post_sections = post.split(WordPressDriver.IMAGE_MACRO)
         if len(post_sections) == 1:
@@ -182,13 +185,13 @@ class TsvReader:
         self.tsv = tsv
         
     def read(self, required_keys):
-        file_handle = open(self.tsv, 'r')
+        file_handle = open(self.tsv, 'rU')
         output = []
         for i, line in enumerate(file_handle):
             if i == 0:
-                columns = line.strip().split('    ');
+                columns = re.split(r'\t+', line.strip())
             else:
-                line_data = dict(zip(columns, line.split('    ')))
+                line_data = dict(zip(columns, re.split(r'\t+', line.strip())))
                 for key in required_keys:
                     if not key in line_data or not line_data[key]:
                         raise BlogPostException("Whoops! Looks like there isn't a value for the '%s' column in row %i of %s." % 
@@ -211,6 +214,19 @@ class Femmabot:
         assert client, "Oops! Couldn't find client info for the blog %s" % blog_url
         
         return dict(client.items() + blog_post.items())
+    
+    def update_tsv_with_successful_posts(self, successful_posts):
+        f = open(self.blog_posts_tsv, "rU")
+        contents = f.readlines()
+        f.close()
+
+        for index, post_url in successful_posts.iteritems():
+            contents[index + 1] += post_url
+
+        f = open(self.blog_posts_tsv, "r+U")
+        contents = "".join(contents)
+        f.write(contents)
+        f.close()
         
     def arm_the_probe(self):
         try:
@@ -225,24 +241,26 @@ class Femmabot:
             
             driver = webdriver.Chrome()
             driver.maximize_window()
+            successful_posts = {}
             for i, blog_post in enumerate(blog_posts):
                 try:
                     print "%i." % (i + 1),
                     blog_post = self.merge_tsv_data(clients, blog_post)
                     word_press_driver = WordPressDriver(driver, blog_post)
                     post_url = word_press_driver.judo_chop()
+                    successful_posts[i] = post_url
                     print "PASS: %s" % post_url
                 except AssertionError as e:
                     print "ERROR: %s" % e
                 except:
                     print "ERROR: %s" % sys.exc_info()[0]
-                    raise
                     break
+            self.update_tsv_with_successful_posts(successful_posts)
         except BlogPostException as e:
             print e.message
         finally:
             if 'driver' in locals():
-                pass# driver.close()
+                driver.close()
 
 if not len(sys.argv) > 2: 
     print("Whoops! Remember to include the paths of both the clients and blog posts TSV files.")
@@ -254,5 +272,7 @@ if not re.match(tsv_re, clients_tsv) or not re.match(tsv_re, blog_posts_tsv):
     print "Oh no! Femmabot only accepts TSV files."
     sys.exit()
 
+subprocess.call(["afplay", 'shaguar.wav'])
+print "Arm the probe."
 femmabot = Femmabot(clients_tsv, blog_posts_tsv)
 femmabot.arm_the_probe()
