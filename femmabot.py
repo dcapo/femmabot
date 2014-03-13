@@ -244,12 +244,13 @@ class Femmabot:
             successful_posts = {}
             for i, blog_post in enumerate(blog_posts):
                 try:
-                    print "%i." % (i + 1),
-                    blog_post = self.merge_tsv_data(clients, blog_post)
-                    word_press_driver = WordPressDriver(driver, blog_post)
-                    post_url = word_press_driver.judo_chop()
-                    successful_posts[i] = post_url
-                    print "PASS: %s" % post_url
+                    if not blog_post['post_url']:
+                        print "%i." % (i + 1),
+                        blog_post = self.merge_tsv_data(clients, blog_post)
+                        word_press_driver = WordPressDriver(driver, blog_post)
+                        post_url = word_press_driver.judo_chop()
+                        successful_posts[i] = post_url
+                        print "PASS: %s" % post_url
                 except AssertionError as e:
                     print "ERROR: %s" % e
                 except:
@@ -272,7 +273,7 @@ if not re.match(tsv_re, clients_tsv) or not re.match(tsv_re, blog_posts_tsv):
     print "Oh no! Femmabot only accepts TSV files."
     sys.exit()
 
-subprocess.call(["afplay", 'shaguar.wav'])
+subprocess.call(["afplay", 'media/shaguar.wav'])
 print "Arm the probe."
 femmabot = Femmabot(clients_tsv, blog_posts_tsv)
 femmabot.arm_the_probe()
