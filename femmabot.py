@@ -257,6 +257,7 @@ class Femmabot:
                     print "ERROR: %s" % sys.exc_info()[0]
                     break
             self.update_tsv_with_successful_posts(successful_posts)
+            subprocess.call(["afplay", 'media/shaguar.wav'])
         except BlogPostException as e:
             print e.message
         finally:
