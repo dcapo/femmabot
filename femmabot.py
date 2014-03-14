@@ -27,7 +27,7 @@ class WordPressDriver:
     
     def wait_until(self, expectation, error_message=None):
         try:
-            WebDriverWait(self.driver, 10).until(expectation)
+            WebDriverWait(self.driver, 30).until(expectation)
         except TimeoutException:
             if error_message:
                 raise AssertionError(error_message)
