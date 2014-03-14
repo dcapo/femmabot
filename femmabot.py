@@ -62,6 +62,10 @@ class WordPressDriver:
         alignment_select = attachment_details.find_element_by_xpath("//select[@data-setting='align']")
         Select(alignment_select).select_by_value(self.bp['image_alignment'].lower())
         
+        link_to_input = attachment_details.find_element_by_xpath("//input[@data-setting='linkUrl']")
+        link_to_input.clear()
+        link_to_input.send_keys(self.bp['home_page'])
+        
     def upload_image(self):
         media_button = self.driver.find_element_by_id("insert-media-button")
         media_button.click()
@@ -98,7 +102,7 @@ class WordPressDriver:
         text_tab.click()
         
         content = self.driver.find_element_by_id("content")
-        h1 = "<a href='%s'><h1>%s</h1></a>" % (self.bp['home_page'], self.bp['h1'])
+        h1 = "<h1><a href='%s'>%s</a></h1>" % (self.bp['home_page'], self.bp['h1'])
         h3 = "<h3><a href='%s'>%s</a>\n%s</h3>" % (self.bp['home_page'], self.bp['h3'], self.bp['address'])
         post = "%s\n%s\n%s" % (h1, self.bp['body'], h3)
         keywords = self.bp['link_keywords'].split(',')
