@@ -2,6 +2,7 @@ import sys
 import os
 import subprocess
 import re
+import csv
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
@@ -97,8 +98,8 @@ class WordPressDriver:
         text_tab.click()
         
         content = self.driver.find_element_by_id("content")
-        h1 = "<h1>%s</h1>" % self.bp['h1']
-        h3 = "<h3>%s \n %s</h3>" % (self.bp['h3'], self.bp['address'])
+        h1 = "<a href='%s'><h1>%s</h1></a>" % (self.bp['home_page'], self.bp['h1'])
+        h3 = "<h3><a href='%s'>%s</a>\n%s</h3>" % (self.bp['home_page'], self.bp['h3'], self.bp['address'])
         post = "%s\n%s\n%s" % (h1, self.bp['body'], h3)
         keywords = self.bp['link_keywords'].split(',')
         for keyword in keywords:
@@ -180,31 +181,40 @@ class WordPressDriver:
         self.update_plugins()
         return self.create_blog_post(False)
 
-class TsvReader:
-    def __init__(self, tsv):
-        self.tsv = tsv
+class CsvReader:
+    def __init__(self, a_csv):
+        self.csv = a_csv
+    
+    def print_csv(self):
+        file_handle = open(self.csv, 'rb')
+        print [row for row in csv.reader(file_handle)]
         
     def read(self, required_keys):
-        file_handle = open(self.tsv, 'rU')
+        file_handle = open(self.csv, 'rb')
+        reader = csv.reader(file_handle)
         output = []
-        for i, line in enumerate(file_handle):
-            if i == 0:
-                columns = re.split(r'\t+', line.strip())
-            else:
-                line_data = dict(zip(columns, re.split(r'\t+', line.strip())))
-                for key in required_keys:
-                    if not key in line_data or not line_data[key]:
-                        raise BlogPostException("Whoops! Looks like there isn't a value for the '%s' column in row %i of %s." % 
-                        (key, i, self.tsv))
-                output.append(line_data)
-        return output
+        try:
+            for i, line_data in enumerate(reader):
+                if i == 0:
+                    columns = line_data
+                else:
+                    line_data = dict(zip(columns, line_data))
+                    for key in required_keys:
+                        if not key in line_data or not line_data[key]:
+                            raise BlogPostException("Whoops! Looks like there isn't a value for the '%s' column in row %i of %s." % 
+                            (key, i, self.csv))
+                    output.append(line_data)
+            file_handle.close()
+            return output
+        except csv.Error as e:
+            raise BlogPostException('Error in %s, line %d: %s' % (self.csv, i, e))
 
 class Femmabot:
-    def __init__(self, clients_tsv, blog_posts_tsv):
-        self.clients_tsv = clients_tsv
-        self.blog_posts_tsv = blog_posts_tsv
+    def __init__(self, clients_csv, blog_posts_csv):
+        self.clients_csv = clients_csv
+        self.blog_posts_csv = blog_posts_csv
     
-    def merge_tsv_data(self, clients, blog_post):
+    def merge_csv_data(self, clients, blog_post):
         blog_url = blog_post['url']
         
         for client_i in clients:
@@ -215,29 +225,31 @@ class Femmabot:
         
         return dict(client.items() + blog_post.items())
     
-    def update_tsv_with_successful_posts(self, successful_posts):
-        f = open(self.blog_posts_tsv, "rU")
-        contents = f.readlines()
-        f.close()
-
-        for index, post_url in successful_posts.iteritems():
-            contents[index + 1] += post_url
-
-        f = open(self.blog_posts_tsv, "r+U")
-        contents = "".join(contents)
-        f.write(contents)
-        f.close()
+    def update_csv_with_successful_posts(self, successful_posts):
+        try:
+            file_handle = open(self.blog_posts_csv, "rb")
+            lines = [row for row in csv.reader(file_handle)]
+            file_handle.close()
+            
+            for i, post_url in successful_posts.iteritems():
+                lines[i+1][-1] = post_url
+            
+            file_handle = open(self.blog_posts_csv, "wb")
+            writer = csv.writer(file_handle)
+            writer.writerows(lines)
+        except csv.Error as e:
+            raise BlogPostException('Error in %s, line %d: %s' % (self.blog_posts_csv, i, e))
         
     def arm_the_probe(self):
         try:
             required_client_keys = ['url', 'username', 'password', 'address', 'home_page']
-            clients = TsvReader(self.clients_tsv).read(required_client_keys)
+            clients = CsvReader(self.clients_csv).read(required_client_keys)
             
             required_blog_post_keys = ['url', 'title', 'h1', 'body', 'h3', 'link_keywords', 
                                        'image_name', 'image_caption', 'image_description', 
                                        'image_alignment', 'seo_description', 'seo_keywords',
                                        'category']
-            blog_posts = TsvReader(self.blog_posts_tsv).read(required_blog_post_keys)
+            blog_posts = CsvReader(self.blog_posts_csv).read(required_blog_post_keys)
             
             driver = webdriver.Chrome()
             driver.maximize_window()
@@ -246,7 +258,7 @@ class Femmabot:
                 try:
                     if not blog_post['post_url']:
                         print "%i." % (i + 1),
-                        blog_post = self.merge_tsv_data(clients, blog_post)
+                        blog_post = self.merge_csv_data(clients, blog_post)
                         word_press_driver = WordPressDriver(driver, blog_post)
                         post_url = word_press_driver.judo_chop()
                         successful_posts[i] = post_url
@@ -256,7 +268,7 @@ class Femmabot:
                 except:
                     print "ERROR: %s" % sys.exc_info()[0]
                     break
-            self.update_tsv_with_successful_posts(successful_posts)
+            self.update_csv_with_successful_posts(successful_posts)
             subprocess.call(["afplay", 'media/shaguar.wav'])
         except BlogPostException as e:
             print e.message
@@ -265,16 +277,16 @@ class Femmabot:
                 driver.close()
 
 if not len(sys.argv) > 2: 
-    print("Whoops! Remember to include the paths of both the clients and blog posts TSV files.")
+    print("Whoops! Remember to include the paths of both the clients and blog posts CSV files.")
     sys.exit()
-clients_tsv = sys.argv[1]
-blog_posts_tsv = sys.argv[2]
-tsv_re = '^\w+.tsv$'
-if not re.match(tsv_re, clients_tsv) or not re.match(tsv_re, blog_posts_tsv):
-    print "Oh no! Femmabot only accepts TSV files."
+clients_csv = sys.argv[1]
+blog_posts_csv = sys.argv[2]
+csv_re = '^\w+.csv$'
+if not re.match(csv_re, clients_csv) or not re.match(csv_re, blog_posts_csv):
+    print "Oh no! Femmabot only accepts CSV files."
     sys.exit()
 
-subprocess.call(["afplay", 'media/shaguar.wav'])
 print "Arm the probe."
-femmabot = Femmabot(clients_tsv, blog_posts_tsv)
+
+femmabot = Femmabot(clients_csv, blog_posts_csv)
 femmabot.arm_the_probe()
