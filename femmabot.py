@@ -1,8 +1,10 @@
 import sys
 import os
+import io
 import subprocess
 import re
-import csv
+import unicodecsv, codecs, cStringIO
+from csv import Error as CsvError
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
@@ -83,6 +85,9 @@ class WordPressDriver:
         
         expectation = EC.invisibility_of_element_located((By.CSS_SELECTOR, ".media-sidebar .media-uploader-status"))
         self.wait_until(expectation)
+        
+        expectation = EC.element_to_be_clickable((By.CSS_SELECTOR, ".media-toolbar .media-button-insert"))
+        self.wait_until(expectation, 'upload image button never became enabled') 
         
         error_dialog = media_modal.find_element_by_class_name("upload-errors")
         assert not error_dialog.is_displayed(), 'image file upload failed.'
@@ -184,18 +189,18 @@ class WordPressDriver:
         self.login()
         self.update_plugins()
         return self.create_blog_post(False)
-
+    
 class CsvReader:
-    def __init__(self, a_csv):
-        self.csv = a_csv
+    def __init__(self, csv):
+        self.csv = csv
     
     def print_csv(self):
         file_handle = open(self.csv, 'rb')
-        print [row for row in csv.reader(file_handle)]
+        print [row for row in unicodecsv.reader(file_handle, encoding='utf-8')]
         
     def read(self, required_keys):
         file_handle = open(self.csv, 'rb')
-        reader = csv.reader(file_handle)
+        reader = unicodecsv.reader(file_handle, encoding='utf-8')
         output = []
         try:
             for i, line_data in enumerate(reader):
@@ -210,7 +215,7 @@ class CsvReader:
                     output.append(line_data)
             file_handle.close()
             return output
-        except csv.Error as e:
+        except CsvError as e:
             raise BlogPostException('Error in %s, line %d: %s' % (self.csv, i, e))
 
 class Femmabot:
@@ -232,16 +237,16 @@ class Femmabot:
     def update_csv_with_successful_posts(self, successful_posts):
         try:
             file_handle = open(self.blog_posts_csv, "rb")
-            lines = [row for row in csv.reader(file_handle)]
+            lines = [row for row in unicodecsv.reader(file_handle, encoding='utf-8')]
             file_handle.close()
             
             for i, post_url in successful_posts.iteritems():
                 lines[i+1][-1] = post_url
             
             file_handle = open(self.blog_posts_csv, "wb")
-            writer = csv.writer(file_handle)
+            writer = unicodecsv.writer(file_handle, encoding='utf-8')
             writer.writerows(lines)
-        except csv.Error as e:
+        except CsvError as e:
             raise BlogPostException('Error in %s, line %d: %s' % (self.blog_posts_csv, i, e))
         
     def arm_the_probe(self):
@@ -270,6 +275,7 @@ class Femmabot:
                 except AssertionError as e:
                     print "ERROR: %s" % e
                 except:
+                    raise
                     print "ERROR: %s" % sys.exc_info()[0]
                     break
             self.update_csv_with_successful_posts(successful_posts)
