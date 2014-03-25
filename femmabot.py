@@ -138,19 +138,13 @@ class WordPressDriver:
         keywords.send_keys(self.bp['seo_keywords'])
         
     def choose_category(self):
-        category_list = self.driver.find_element_by_id("categorychecklist")
-        x_path = "//label[@class='selectit' and text()=' %s']" % self.bp['category']
-        category_checkbox = category_list.find_elements_by_xpath(x_path)
-        if len(category_checkbox):
-            category_checkbox[0].find_element_by_css_selector("input").click()
-        else:
-            category_add_toggle = self.driver.find_element_by_id("category-add-toggle")
-            category_add_toggle.click()
-            
-            category_input = self.driver.find_element_by_id("newcategory")
-            category_input.send_keys(self.bp['category'])
-            category_submit_button = self.driver.find_element_by_id("category-add-submit")
-            category_submit_button.click()
+        category_add_toggle = self.driver.find_element_by_id("category-add-toggle")
+        category_add_toggle.click()
+    
+        category_input = self.driver.find_element_by_id("newcategory")
+        category_input.send_keys(self.bp['category'])
+        category_submit_button = self.driver.find_element_by_id("category-add-submit")
+        category_submit_button.click()
         
     def create_blog_post(self, publish):
         posts_button = self.driver.find_element_by_id("wp-admin-bar-new-content")
