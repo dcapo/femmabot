@@ -1,5 +1,6 @@
 .DS_Store
 install
+*.pyc
 selenium-server-*
-images/dental/*
-images/optical/*
+media/images/*
+*.csv
