@@ -77,8 +77,11 @@ class WordPressDriver:
         upload_ui = media_modal.find_element_by_class_name("upload-ui")
         assert upload_ui.is_displayed(), 'file upload UI did not become visible.'
         
-        file_input = media_modal.find_element_by_css_selector(".plupload input")
+        file_input = media_modal.find_element_by_css_selector(".media-frame input[type='file']")
         file_input.send_keys("%s/%s" % (WordPressDriver.IMAGE_DIR, self.bp['image_name']))
+
+		expectation = EC.visibility_of_element_located((By.CSS_SELECTOR, ".media-sidebar .media-uploader-status"))
+        self.wait_until(expectation)
         
         expectation = EC.invisibility_of_element_located((By.CSS_SELECTOR, ".media-sidebar .media-uploader-status"))
         self.wait_until(expectation)
@@ -135,19 +138,13 @@ class WordPressDriver:
         keywords.send_keys(self.bp['seo_keywords'])
         
     def choose_category(self):
-        category_list = self.driver.find_element_by_id("categorychecklist")
-        x_path = "//label[@class='selectit' and text()=' %s']" % self.bp['category']
-        category_checkbox = category_list.find_elements_by_xpath(x_path)
-        if len(category_checkbox):
-            category_checkbox[0].find_element_by_css_selector("input").click()
-        else:
-            category_add_toggle = self.driver.find_element_by_id("category-add-toggle")
-            category_add_toggle.click()
-            
-            category_input = self.driver.find_element_by_id("newcategory")
-            category_input.send_keys(self.bp['category'])
-            category_submit_button = self.driver.find_element_by_id("category-add-submit")
-            category_submit_button.click()
+        category_add_toggle = self.driver.find_element_by_id("category-add-toggle")
+        category_add_toggle.click()
+    
+        category_input = self.driver.find_element_by_id("newcategory")
+        category_input.send_keys(self.bp['category'])
+        category_submit_button = self.driver.find_element_by_id("category-add-submit")
+        category_submit_button.click()
         
     def create_blog_post(self, publish):
         posts_button = self.driver.find_element_by_id("wp-admin-bar-new-content")
@@ -199,7 +196,7 @@ class WordPressDriver:
     def judo_chop(self):
         self.login()
         self.update_plugins()
-        return self.create_blog_post(False)
+        return self.create_blog_post(True)
     
 class CsvReader:
     def __init__(self, csv):

@@ -2,5 +2,5 @@
 *.pyc
 *.csv
 install
+*.pyc
 selenium-server-*
-media/images/*
