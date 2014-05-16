@@ -43,9 +43,6 @@ class WordPressDriver:
         log_in_button = self.driver.find_element_by_name("wp-submit")
         log_in_button.click()
         assert 'Dashboard' in self.driver.title, 'failed to login to %s.' % self.bp['url']
-    
-    def update_plugins(self):
-        pass
         
     def complete_image_form(self, attachment_details):
         title_input = attachment_details.find_element_by_xpath("//label[@data-setting='title']/input")
@@ -183,7 +180,21 @@ class WordPressDriver:
         
         anchor = self.driver.find_element_by_css_selector("#message p a")
         return anchor.get_attribute('href')
-                
+    
+    def update_plugins(self):
+        plugins_button = self.driver.find_element_by_id('menu-plugins')
+        plugins_button.click()
+        
+        action_select = self.driver.find_element_by_css_selector('.tablenav .actions select')
+        assert action_select, "could not find the 'Bulk Actions' dropdown"
+         
+        Select(action_select).select_by_value("update-selected")
+        
+        select_all_checkbox = self.driver.find_element_by_id('cb-select-all-1')
+        select_all_checkbox.click()
+        
+        apply_button = self.driver.find_element_by_id('doaction')
+        apply_button.click()
     
     def judo_chop(self):
         self.login()
