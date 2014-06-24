@@ -80,7 +80,7 @@ class WordPressDriver:
         file_input = media_modal.find_element_by_css_selector(".media-frame input[type='file']")
         file_input.send_keys("%s/%s" % (WordPressDriver.IMAGE_DIR, self.bp['image_name']))
 
-		expectation = EC.visibility_of_element_located((By.CSS_SELECTOR, ".media-sidebar .media-uploader-status"))
+		    expectation = EC.visibility_of_element_located((By.CSS_SELECTOR, ".media-sidebar .media-uploader-status"))
         self.wait_until(expectation)
         
         expectation = EC.invisibility_of_element_located((By.CSS_SELECTOR, ".media-sidebar .media-uploader-status"))
